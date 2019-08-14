@@ -295,13 +295,31 @@ where
     let h = height as i32;
 
     for y in 0..height {
-        for x in 0..width {
-            let x_in = cmp::max(0, cmp::min(x as i32 - t.0, w - 1));
-            let y_in = cmp::max(0, cmp::min(y as i32 - t.1, h - 1));
-            // (x_in, y_in) and (x, y) are guaranteed to be in bounds
-            unsafe {
-                let p = image.unsafe_get_pixel(x_in as u32, y_in as u32);
-                out.unsafe_put_pixel(x, y, p);
+        let y_in = cmp::max(0, cmp::min(y as i32 - t.1, h - 1));
+
+        if t.0 > 0 {
+            let p_min = *image.get_pixel(0, y_in as u32);
+            for x in 0..(t.0).min(w) {
+                out.put_pixel(x as u32, y, p_min);
+            }
+
+            if t.0 < w {
+                let in_base = (y_in as usize * width as usize) * P::CHANNEL_COUNT as usize;
+                let out_base = (y as usize * width as usize + (t.0 as usize)) * P::CHANNEL_COUNT as usize;
+                let len = (w - t.0) as usize * P::CHANNEL_COUNT as usize;
+                (*out)[out_base..][..len].copy_from_slice(&(**image)[in_base..][..len]);
+            }
+        } else {
+            let p_max = *image.get_pixel(width - 1, y_in as u32);
+            for x in (w + t.0).max(0)..w {
+                out.put_pixel(x as u32, y, p_max);
+            }
+
+            if w + t.0 > 0 {
+                let in_base = (y_in as usize * width as usize - (t.0 as usize)) * P::CHANNEL_COUNT as usize;
+                let out_base = (y as usize * width as usize) * P::CHANNEL_COUNT as usize;
+                let len = (w + t.0) as usize * P::CHANNEL_COUNT as usize;
+                (*out)[out_base..][..len].copy_from_slice(&(**image)[in_base..][..len]);
             }
         }
     }
